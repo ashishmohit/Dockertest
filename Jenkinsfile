@@ -13,7 +13,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t selenium/standalone-chromium:latest.'
+                    bat 'docker build -t selenium/standalone-chromium:latest .'
                 }
             }
         }
@@ -21,7 +21,7 @@ pipeline {
         stage('Run Tests in Docker') {
             steps {
                 script {
-                    sh 'docker run --name selenium --rm selenium/standalone-chromium:latest'
+                    bat 'docker run --name selenium --rm selenium/standalone-chromium:latest'
                 }
             }
         }
