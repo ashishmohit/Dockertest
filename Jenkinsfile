@@ -21,18 +21,26 @@ pipeline {
 
         stage('Run Selenium & Java Tests') {
             steps {
-                // Remove old containers if exist
+
+                // Remove old containers
                 bat 'docker rm -f selenium || exit 0'
                 bat 'docker rm -f javaapp || exit 0'
 
-                // Start Selenium container in background
+                // Start Selenium container
                 bat 'docker run -d --name selenium -p 4444:4444 selenium/standalone-chromium:latest'
 
-                // Wait for Selenium to be ready (localhost works on Windows)
+                // Wait for Selenium to be ready (robust try/catch)
                 powershell """
                 Write-Host 'Waiting for Selenium to start...'
-                while ((Invoke-WebRequest ${env.SELENIUM_URL.replace('/wd/hub','')}/status -UseBasicParsing -ErrorAction SilentlyContinue) -eq \$null) {
-                    Start-Sleep -Seconds 2
+                \$seleniumReady = \$false
+                while (-not \$seleniumReady) {
+                    try {
+                        \$resp = Invoke-WebRequest ${env.SELENIUM_URL.replace('/wd/hub','')}/status -UseBasicParsing -ErrorAction Stop
+                        if (\$resp.StatusCode -eq 200) { \$seleniumReady = \$true }
+                    } catch {
+                        Write-Host 'Selenium not ready yet, waiting 2s...'
+                        Start-Sleep -Seconds 2
+                    }
                 }
                 Write-Host 'Selenium is ready!'
                 """
@@ -45,7 +53,7 @@ pipeline {
 
     post {
         always {
-            // Cleanup containers after pipeline
+            // Cleanup
             bat 'docker rm -f selenium || exit 0'
             bat 'docker rm -f javaapp || exit 0'
         }
