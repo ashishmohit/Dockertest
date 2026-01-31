@@ -1,16 +1,19 @@
-FROM selenium/standalone-chromium:latest
+FROM maven:3.9.3-eclipse-temurin-17
 
-USER root
-
-# Install Maven + Java
-RUN apt-get update && \
-    apt-get install -y maven && \
-    apt-get clean
-
-# Verify installation
-RUN mvn -v
-
+# Set working directory
 WORKDIR /app
-COPY . /app
 
-CMD ["mvn", "test"]
+# Copy pom.xml first (better Docker caching)
+COPY pom.xml .
+
+# Download project dependencies
+RUN mvn dependency:go-offline -B
+
+# Copy your source code
+COPY src ./src
+
+# Build the project
+RUN mvn clean package -DskipTests
+
+# Run your main Selenium test
+CMD ["mvn", "exec:java", "-Dexec.mainClass=Test901.Google"]
