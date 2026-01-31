@@ -5,12 +5,14 @@ services:
     container_name: selenium
     ports:
       - "4444:4444"
-    shm_size: 2g  # Critical for Chrome stability
+    shm_size: 2g
+    # Fixed healthcheck - use wget (available in image) + longer startup grace
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4444/status"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4444/status || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 5
+      timeout: 20s
+      start_period: 60s  # Allow 60s initial startup
+      retries: 10
 
   javaapp:
     build: .
@@ -20,4 +22,3 @@ services:
         condition: service_healthy
     environment:
       - SELENIUM_URL=http://selenium:4444/wd/hub
-    network_mode: "bridge"
