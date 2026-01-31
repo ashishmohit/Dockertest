@@ -4,6 +4,7 @@ pipeline {
     environment {
         SELENIUM_CONTAINER = "selenium"
         JAVA_CONTAINER = "javaapp"
+        SELENIUM_URL = "http://localhost:4444" // Use localhost for Windows Jenkins
     }
 
     stages {
@@ -27,21 +28,21 @@ pipeline {
                 bat 'docker rm -f %SELENIUM_CONTAINER% || exit 0'
                 bat 'docker rm -f %JAVA_CONTAINER% || exit 0'
 
-                // Start Selenium container in background
+                // Start Selenium container in detached mode
                 bat 'docker run -d --name %SELENIUM_CONTAINER% -p 4444:4444 selenium/standalone-chromium:latest'
 
-                // Wait for Selenium to be ready by checking logs
+                // Wait until Selenium is ready by polling localhost:4444/status
                 powershell """
                 Write-Host 'Waiting for Selenium to start...'
 
                 \$seleniumReady = \$false
-                \$timeout = 60  # seconds
+                \$timeout = 60  # max wait time in seconds
                 \$elapsed = 0
 
                 while (-not \$seleniumReady -and \$elapsed -lt \$timeout) {
                     try {
-                        \$logs = docker logs %SELENIUM_CONTAINER% 2>&1
-                        if (\$logs -match 'Selenium Server is up and running') {
+                        \$response = Invoke-WebRequest ${env.SELENIUM_URL}/status -UseBasicParsing -ErrorAction SilentlyContinue
+                        if (\$response.StatusCode -eq 200) {
                             \$seleniumReady = \$true
                             Write-Host 'Selenium is ready!'
                             break
@@ -51,7 +52,7 @@ pipeline {
                             \$elapsed += 2
                         }
                     } catch {
-                        Write-Host 'Error checking Selenium logs, retrying...'
+                        Write-Host 'Selenium not ready yet, waiting 2s...'
                         Start-Sleep -Seconds 2
                         \$elapsed += 2
                     }
@@ -62,8 +63,8 @@ pipeline {
                 }
                 """
 
-                // Run Java tests container linked to Selenium
-                bat 'docker run --rm --name %JAVA_CONTAINER% --link %SELENIUM_CONTAINER% javaapp'
+                // Run Java tests container, pointing to Selenium on localhost
+                bat 'docker run --rm --name %JAVA_CONTAINER% -e SELENIUM_URL=${env.SELENIUM_URL} javaapp'
             }
         }
     }
