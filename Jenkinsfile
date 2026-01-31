@@ -10,20 +10,27 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Test Image') {
             steps {
-                script {
-                    bat 'docker build -t selenium/standalone-chromium:latest .'
-                }
+                bat 'docker build -t javaapp .'
             }
         }
 
-        stage('Run Tests in Docker') {
+        stage('Run Selenium Grid & Tests') {
             steps {
-                script {
-					bat 'docker rm -f selenium || exit 0'
-                    bat 'docker run --name selenium --rm selenium/standalone-chromium:latest'
-                }
+
+                // Stop old containers
+                bat 'docker rm -f selenium || exit 0'
+                bat 'docker rm -f javaapp || exit 0'
+
+                // Start Selenium browser
+                bat 'docker run -d --name selenium -p 4444:4444 selenium/standalone-chromium:latest'
+
+                // Wait for Selenium to come up
+                bat 'timeout /t 15'
+
+                // Run your Java Selenium tests
+                bat 'docker run --name javaapp --rm --link selenium javaapp'
             }
         }
     }
