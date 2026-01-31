@@ -13,3 +13,4 @@ services:
       - selenium
     environment:
       - SELENIUM_HOST=selenium
+      - SELENIUM_URL=http://selenium:4444
