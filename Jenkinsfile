@@ -21,6 +21,7 @@ pipeline {
         stage('Run Tests in Docker') {
             steps {
                 script {
+					bat 'docker rm -f selenium || exit 0'
                     bat 'docker run --name selenium --rm selenium/standalone-chromium:latest'
                 }
             }
