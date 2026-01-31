@@ -1,24 +1,27 @@
-version: "3.8"
+version: "3"
 services:
-  selenium:
-    image: selenium/standalone-chromium:latest
-    container_name: selenium
+  selenium-hub:
+    image: selenium/hub:latest
+    container_name: selenium-hub
     ports:
       - "4444:4444"
-    shm_size: 2g
-    # Fixed healthcheck - use wget (available in image) + longer startup grace
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4444/status || exit 1"]
-      interval: 30s
-      timeout: 20s
-      start_period: 60s  # Allow 60s initial startup
-      retries: 10
+
+  chrome-node:
+    image: selenium/node-chrome:latest
+    container_name: selenium-chrome
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+    network_mode: "bridge"
 
   javaapp:
     build: .
     container_name: javaapp
     depends_on:
-      selenium:
-        condition: service_healthy
+      - selenium-hub
+      - chrome-node
     environment:
-      - SELENIUM_URL=http://selenium:4444/wd/hub
+      - SELENIUM_URL=http://selenium-hub:4444/wd/hub
