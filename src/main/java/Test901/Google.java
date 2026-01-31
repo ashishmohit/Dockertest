@@ -1,49 +1,38 @@
 package Test901;
 
-
-
-
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
 import org.openqa.selenium.WebDriver;
-
-
-
 import org.openqa.selenium.chrome.ChromeOptions;
-
 import org.openqa.selenium.remote.RemoteWebDriver;
-
-
-
-
 
 public class Google {
 
-	public static void main(String[] args) throws MalformedURLException, InterruptedException {
-		// TODO Auto-generated method stub
-		//System.setProperty("webdriver.chrome.driver", "C:/Users/HP/Downloads/chromedriver-win64 (7)/chromedriver-win64/chromedriver.exe");
-		//WebDriverManager.chromedriver().cachePath("C:/Users/HP/Downloads/chromedriver-win64 (7)/chromedriver-win64/chromedriver.exe").setup();
-		String seleniumURL = "http://selenium:4444/wd/hub";
-		waitForSelenium(seleniumURL);
-		ChromeOptions options = new ChromeOptions();
-		options.addArguments("--headless=new"); // new headless mode for Chrome 109+
-		options.addArguments("--no-sandbox");
-		options.addArguments("--disable-dev-shm-usage");
-		//options.addArguments("--remote-allow-origins=*");
+    public static void main(String[] args) throws MalformedURLException, InterruptedException {
+        // Use environment variable if set, otherwise fallback to localhost (Windows Jenkins fix)
+        String seleniumURL = System.getenv("SELENIUM_URL");
+        if (seleniumURL == null || seleniumURL.isEmpty()) {
+            seleniumURL = "http://localhost:4444/wd/hub";
+        }
 
-		WebDriver driver = new RemoteWebDriver(new URL(seleniumURL), options);
+        waitForSelenium(seleniumURL);
 
-		//WebDriver driver = new ChromeDriver();
-		//driver.manage().window().maximize();
-		driver.get("https://www.google.com/");
-		System.out.println("Title...:|"+driver.getTitle());
-		System.out.println("URL....:|"+driver.getCurrentUrl());	
-		driver.quit();
-	}
-	
-	// Wait until Selenium server is ready
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        WebDriver driver = new RemoteWebDriver(new URL(seleniumURL), options);
+
+        driver.get("https://www.google.com/");
+        System.out.println("Title: " + driver.getTitle());
+        System.out.println("URL: " + driver.getCurrentUrl());
+
+        driver.quit();
+    }
+
     private static void waitForSelenium(String seleniumUrl) throws InterruptedException {
         while (true) {
             try {
@@ -60,5 +49,4 @@ public class Google {
             }
         }
     }
-
 }
