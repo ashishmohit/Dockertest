@@ -22,14 +22,14 @@ pipeline {
         stage('Run Selenium & Java Tests') {
             steps {
 
-                // Remove old containers if exist
+                // Remove old containers if they exist
                 bat 'docker rm -f selenium || exit 0'
                 bat 'docker rm -f javaapp || exit 0'
 
                 // Start Selenium container in background
                 bat 'docker run -d --name selenium -p 4444:4444 selenium/standalone-chromium:latest'
 
-                // Wait for Selenium to be ready (polling)
+                // Wait for Selenium to be ready (PowerShell polling)
                 bat '''
                 powershell -Command "
                 Write-Host 'Waiting for Selenium to start...';
@@ -40,7 +40,7 @@ pipeline {
                 "
                 '''
 
-                // Run Java tests
+                // Run Java tests container
                 bat 'docker run --name javaapp --rm --link selenium javaapp'
             }
         }
@@ -48,7 +48,7 @@ pipeline {
 
     post {
         always {
-            // Cleanup containers
+            // Cleanup containers after pipeline
             bat 'docker rm -f selenium || exit 0'
             bat 'docker rm -f javaapp || exit 0'
         }
