@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SELENIUM_URL = "http://localhost:4444/wd/hub"
+        SELENIUM_CONTAINER = "selenium"
+        JAVA_CONTAINER = "javaapp"
     }
 
     stages {
@@ -22,40 +23,56 @@ pipeline {
         stage('Run Selenium & Java Tests') {
             steps {
 
-                // Remove old containers
-                bat 'docker rm -f selenium || exit 0'
-                bat 'docker rm -f javaapp || exit 0'
+                // Remove old containers if they exist
+                bat 'docker rm -f %SELENIUM_CONTAINER% || exit 0'
+                bat 'docker rm -f %JAVA_CONTAINER% || exit 0'
 
-                // Start Selenium container
-                bat 'docker run -d --name selenium -p 4444:4444 selenium/standalone-chromium:latest'
+                // Start Selenium container in background
+                bat 'docker run -d --name %SELENIUM_CONTAINER% -p 4444:4444 selenium/standalone-chromium:latest'
 
-                // Wait for Selenium to be ready (robust try/catch)
+                // Wait for Selenium to be ready by checking logs
                 powershell """
                 Write-Host 'Waiting for Selenium to start...'
+
                 \$seleniumReady = \$false
-                while (-not \$seleniumReady) {
+                \$timeout = 60  # seconds
+                \$elapsed = 0
+
+                while (-not \$seleniumReady -and \$elapsed -lt \$timeout) {
                     try {
-                        \$resp = Invoke-WebRequest ${env.SELENIUM_URL.replace('/wd/hub','')}/status -UseBasicParsing -ErrorAction Stop
-                        if (\$resp.StatusCode -eq 200) { \$seleniumReady = \$true }
+                        \$logs = docker logs %SELENIUM_CONTAINER% 2>&1
+                        if (\$logs -match 'Selenium Server is up and running') {
+                            \$seleniumReady = \$true
+                            Write-Host 'Selenium is ready!'
+                            break
+                        } else {
+                            Write-Host 'Selenium not ready yet, waiting 2s...'
+                            Start-Sleep -Seconds 2
+                            \$elapsed += 2
+                        }
                     } catch {
-                        Write-Host 'Selenium not ready yet, waiting 2s...'
+                        Write-Host 'Error checking Selenium logs, retrying...'
                         Start-Sleep -Seconds 2
+                        \$elapsed += 2
                     }
                 }
-                Write-Host 'Selenium is ready!'
+
+                if (-not \$seleniumReady) {
+                    throw 'Selenium did not start in time!'
+                }
                 """
 
-                // Run Java tests container
-                bat 'docker run --rm --name javaapp --link selenium javaapp'
+                // Run Java tests container linked to Selenium
+                bat 'docker run --rm --name %JAVA_CONTAINER% --link %SELENIUM_CONTAINER% javaapp'
             }
         }
     }
 
     post {
         always {
-            // Cleanup
-            bat 'docker rm -f selenium || exit 0'
-            bat 'docker rm -f javaapp || exit 0'
+            // Cleanup containers
+            bat 'docker rm -f %SELENIUM_CONTAINER% || exit 0'
+            bat 'docker rm -f %JAVA_CONTAINER% || exit 0'
         }
     }
 }
